@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 
-require __FILE__ . '/vendor/autoload.php'; 
+include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
 
 use NextpostTech\Speedtest\Cli;
 use NextpostTech\Speedtest\SpeedtestException;
