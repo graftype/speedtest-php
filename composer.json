@@ -1,0 +1,34 @@
+{
+  "name": "nextpost-tech/speedtest-php",
+  "description": "Speedtest.net for PHP | Library and command line interface",
+  "authors": [
+    {
+      "name": "Nextpost.tech",
+      "homepage": "https://nextpost.tech",
+      "role": "Developer"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "NextpostTech\\Speedtest\\": "src"
+    }
+  },
+  "require": {
+    "php": ">=7.0",
+    "ext-curl": ">=7.0"
+  },
+  "license": "Apache-2.0",
+  "bin": [
+    "bin/speedtest"
+  ],
+  "keywords": [
+    "speedtest",
+    "bandwidth",
+    "speed",
+    "php",
+    "download",
+    "upload",
+    "speedtest-net",
+    "ookla"
+  ]
+}
