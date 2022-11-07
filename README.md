@@ -1,2 +1,1 @@
-# speedtest-php
-Speedtest.net for PHP (Library and command line interface)
+# Speedtest.net for PHP (Library and command line interface)
