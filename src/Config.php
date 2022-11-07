@@ -82,6 +82,12 @@ class Config
      * @var integer
      */
     protected $uploadMax = 0;
+
+    /**
+     * 
+     * @var string
+     */
+    protected $proxy = "";
     
     /**
      * 
@@ -279,5 +285,21 @@ class Config
     public function setUploadMax($uploadMax)
     {
         $this->uploadMax = $uploadMax;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProxy()
+    {
+        return $this->proxy;
+    }
+
+    /**
+     * @return string $proxy
+     */
+    public function setProxy($proxy)
+    {
+        $this->proxy = $proxy;
     }
 }

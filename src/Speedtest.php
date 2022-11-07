@@ -271,6 +271,21 @@ class Speedtest
             if($this->config->getSourceAddress()) {
                 curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
             }
+            if(!empty($this->config->getProxy())) {
+                $urlParts = parse_url($this->config->getProxy());
+                if ($urlParts == false || !array_key_exists("host", $urlParts)) {
+                    throw new SpeedtestException("Invalid proxy configuration " . $proxy);
+                }
+                $urlParts["host"] = str_replace("https://", "", $urlParts["host"]);
+                $urlParts["host"] = str_replace("http://", "", $urlParts["host"]);
+                curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
+                if (isset($urlParts["port"])) {
+                    curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"] . ":" . $urlParts["port"]);
+                }
+                if (isset($urlParts["user"])) {
+                    curl_setopt($ch, CURLOPT_PROXYUSERPWD, $urlParts["user"] . ":" . $urlParts["pass"]);
+                }
+            }
             curl_setopt($ch, CURLOPT_HEADER, 0);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, $this->config->getTimeout());
@@ -335,6 +350,21 @@ class Speedtest
             $ch = curl_init();
             if($this->config->getSourceAddress()) {
                 curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
+            }
+            if(!empty($this->config->getProxy())) {
+                $urlParts = parse_url($this->config->getProxy());
+                if ($urlParts == false || !array_key_exists("host", $urlParts)) {
+                    throw new SpeedtestException("Invalid proxy configuration " . $proxy);
+                }
+                $urlParts["host"] = str_replace("https://", "", $urlParts["host"]);
+                $urlParts["host"] = str_replace("http://", "", $urlParts["host"]);
+                curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
+                if (isset($urlParts["port"])) {
+                    curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"] . ":" . $urlParts["port"]);
+                }
+                if (isset($urlParts["user"])) {
+                    curl_setopt($ch, CURLOPT_PROXYUSERPWD, $urlParts["user"] . ":" . $urlParts["pass"]);
+                }
             }
             curl_setopt($ch, CURLOPT_HEADER, 0);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

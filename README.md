@@ -2,7 +2,7 @@
 
 Library and command line interface to run server-side speedtests via (Speedtest.net)[https://www.speedtest.net/] from cli or web interface.
 
-![speedtest-php demo](resources/speedtest-php.gif)
+![demo](resources/demo.gif)
 
 This library is an updated version of [aln-1/speedtest-php](https://github.com/aln-1/speedtest-php) ported from the Python version [sivel/speedtest-cli](https://github.com/sivel/speedtest-cli).
 

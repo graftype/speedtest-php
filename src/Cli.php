@@ -153,7 +153,8 @@ class Cli
             "server::",
             "exclude::",
             "source::",
-            "timeout::"
+            "timeout::",
+            "proxy::"
         ];
         
         $options = getopt($shortopts, $longopts);
@@ -176,6 +177,10 @@ class Cli
         $config = new Config();
         if(array_key_exists('timeout', $options)) {
             $config->setTimeout((int)$options['timeout']);
+        }
+
+        if(array_key_exists('proxy', $options)) {
+            $config->setProxy($options['proxy']);
         }
         
         if(array_key_exists('source', $options)) {
