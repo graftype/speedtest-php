@@ -208,6 +208,7 @@ Console:
 
 Output:
 
+```console
 usage: speedtest [-h] [--no-download] [--no-upload] [--single] [--bytes]
                  [--share] [--simple] [--json] [--list] [--server=SERVER]
                  [--exclude=EXCLUDE] [--source=SOURCE] [--timeout=TIMEOUT]
