@@ -2,6 +2,8 @@
 
 Library and command line interface to run server-side speedtests via (Speedtest.net)[https://www.speedtest.net/] from cli or web interface.
 
+![speedtest-php demo](resources/speedtest-php.gif)
+
 This library is an updated version of [aln-1/speedtest-php](https://github.com/aln-1/speedtest-php) ported from the Python version [sivel/speedtest-cli](https://github.com/sivel/speedtest-cli).
 
 [![Latest Version](https://poser.pugx.org/nextpost-tech/speedtest-php/v)](//packagist.org/packages/nextpost-tech/speedtest-php)
@@ -151,10 +153,10 @@ Code:
 ```php
 require 'vendor/autoload.php';
 
-$config = new Aln\Speedtest\Config();
+$config = new NextpostTech\Speedtest\Config();
 $config->setCallback(function ($results) { print_r($results); });
 
-$speedtest = new Aln\Speedtest\Speedtest($config);
+$speedtest = new NextpostTech\Speedtest\Speedtest($config);
 $speedtest->getServers();
 $speedtest->getBestServer();
 $speedtest->download();
