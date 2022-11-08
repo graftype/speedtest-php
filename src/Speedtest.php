@@ -378,7 +378,7 @@ class Speedtest
                     $urlParts = parse_url("http://" . $this->config->getProxy());
                 }
                 if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid pattern for" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+                    throw new SpeedtestException("Invalid pattern for proxy" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
                 }
                 curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
                 if (isset($urlParts["port"])) {
@@ -460,7 +460,7 @@ class Speedtest
                     $urlParts = parse_url("http://" . $this->config->getProxy());
                 }
                 if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid pattern for" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+                    throw new SpeedtestException("Invalid pattern for proxy" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
                 }
                 curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
                 if (isset($urlParts["port"])) {
@@ -551,7 +551,7 @@ class Speedtest
                 $urlParts = parse_url("http://" . $this->config->getProxy());
             }
             if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                throw new SpeedtestException("Invalid pattern for" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+                throw new SpeedtestException("Invalid pattern for proxy " . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
             }
             curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
             if (isset($urlParts["port"])) {
