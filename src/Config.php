@@ -88,6 +88,12 @@ class Config
      * @var string
      */
     protected $proxy = "";
+
+    /**
+     * 
+     * @var string
+     */
+    protected $proxyType = "http";
     
     /**
      * 
@@ -302,6 +308,26 @@ class Config
     {
         $proxy = str_replace("https://", "", $proxy);
         $proxy = str_replace("http://", "", $proxy);
+        if (strpos("socks5://", $proxy) !==  false) {
+            $proxy = str_replace("socks5://", "", $proxy);
+            $this->proxyType = "socks5";
+        }
         $this->proxy = $proxy;
+    }
+
+    /**
+     * @param int $proxyType
+     */
+    public function setProxyType($proxyType)
+    {
+        $this->proxyType = $proxyType;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProxyType()
+    {
+        return $this->proxyType;
     }
 }

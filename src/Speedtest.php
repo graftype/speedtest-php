@@ -3,6 +3,7 @@
 namespace NextpostTech\Speedtest;
 
 use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\TransferStats as GuzzleTransferStats;
 
 /**
  * Speedtest.net for PHP
@@ -98,29 +99,33 @@ class Speedtest
      */
     protected function getRemoteConfig() {
         try {
-            // $xml = new \SimpleXMLElement("https://www.speedtest.net/speedtest-config.php", null, true);
             $client = new GuzzleClient();
+
             $options = [
-                "timeout" => 10,
+                "verify"  => true,
+                "timeout" => $this->config->getTimeout(),
                 "curl"    => [
-                    CURLOPT_USERAGENT => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36",
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_2_0, // Make http client work with HTTP 2/0
-                    CURLOPT_SSLVERSION => 1,
-                    CURLOPT_SSL_VERIFYPEER => false
+                    CURLOPT_USERAGENT       => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36",
+                    CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_2_0, // Make http client work with HTTP 2/0
+                    CURLOPT_SSLVERSION      => 1,
+                    CURLOPT_SSL_VERIFYPEER  => false
                 ], 
                 "headers" => [
                     "accept-language" => "en-US"
                 ]
             ];
+
             if (!empty($this->config->getProxy())) {
                 $proxy_parts = explode('://', $this->config->getProxy());
                 $options["proxy"] = $proxy_parts[0] == "https" ? $proxy_parts[1] : $this->config->getProxy();
             }
+
             $res = $client->request('GET', 'https://www.speedtest.net/speedtest-config.php', $options);
+
             $data = $res->getBody()->getContents();
             $xml = simplexml_load_string($data);
-            if (empty($xml->client)) {
-                throw new SpeedtestException("Couldn't get remote client config. Reason: empty client data.");
+            if (empty($xml)) {
+                throw new SpeedtestException("Couldn't get remote client config. Reason: empty xml data.");
             }
             $server_config = $xml->{'server-config'};
             $download = $xml->download;
@@ -159,41 +164,45 @@ class Speedtest
     }
 
     /**
+     * Get servers
      * 
      * @throws SpeedtestException
-     * @return string[][]
+     * @return string[]
      */
     public function getServers() {
         $list = [];
         
-        $url = 'https://c.speedtest.net/speedtest-servers-static.php';
-        
         try {
-            throw new SpeedtestException(print_r($this->config->getProxy(), true));
+            $client = new GuzzleClient();
+
+            $options = [
+                "verify"  => true,
+                "timeout" => $this->config->getTimeout(),
+                "curl"    => [
+                    CURLOPT_USERAGENT       => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36",
+                    CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_2_0, // Make http client work with HTTP 2/0
+                    CURLOPT_SSLVERSION      => 1,
+                    CURLOPT_SSL_VERIFYPEER  => false
+                ], 
+                "headers" => [
+                    "accept-language" => "en-US"
+                ]
+            ];
+
             if (!empty($this->config->getProxy())) {
-                $opts = [
-                    'http' => [
-                        'method'            => 'GET',
-                        'proxy'             => $this->config->getProxy(),
-                        'request_fulluri'   => true,
-                        'user-agent'        => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'
-                    ],
-                ];
-                $context = stream_context_create($opts);
-                $data = file_get_contents($url, false, $context);
-            } else {
-                $opts = [
-                    'http' => [
-                        'method'            => 'GET',
-                        'user-agent'        => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'
-                    ],
-                ];
-                $context = stream_context_create($opts);
-                $data = file_get_contents($url, false, $context);
+                $proxy_parts = explode('://', $this->config->getProxy());
+                $options["proxy"] = $proxy_parts[0] == "https" ? $proxy_parts[1] : $this->config->getProxy();
             }
-            // $xml = new \SimpleXMLElement($url, null, true);
-            // throw new SpeedtestException(print_r($data, true));
+
+            $res = $client->request('GET', 'https://c.speedtest.net/speedtest-servers-static.php', $options);
+
+            $data = $res->getBody()->getContents();
             $xml = simplexml_load_string($data);
+
+            if (empty($xml)) {
+                throw new SpeedtestException("Couldn't get servers list. Reason: empty xml data.");
+            }
+
             foreach($xml->servers->server as $server) {
                 $server = $this->xmlAttributesToArray($server);
                 $id = (int)$server['id'];
@@ -209,8 +218,10 @@ class Speedtest
                     $list[(int)$server['id']] = $server;
                 }
             }
+        } catch (SpeedtestException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            throw new SpeedtestException($e->getMessage());
+            throw new SpeedtestException("Couldn't get servers list. Reason: " . $e->getMessage());
         }
         
         if(!$list) {
@@ -229,56 +240,97 @@ class Speedtest
     }
     
     /**
-     * return string[]
+     * Get best server
+     * 
+     * @param int $checkCount Number of server to check
+     *                        100   Default value
+     *                        1     Production value for faster speedtests    
+     * 
+     * @throws SpeedtestException
+     * @return string[]
      */
-    public function getBestServer() {
+    public function getBestServer($checkCount = 100) {
         $servers = array_filter($this->servers, function($server) {
             return $server['d'] < 250;
         });
-        if($servers) {
+
+        if ($servers) {
             $this->servers = $servers;
+        }
+
+        if ($checkCount == 1) {
+            $this->best = $servers[0]['d'];
         }
         
         $latency = PHP_INT_MAX;
         $fastest = null;
-        
-        $ch = curl_init();
-        if($this->config->getSourceAddress()) {
-            curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
-        }
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $this->config->getTimeout());
-        curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
-        
-        for($i = 0; $i < min([100, count($this->servers)]); $i++) {
+
+        for ($i = 0; $i < min([$checkCount, count($this->servers)]); $i++) {
             $url = $this->servers[$i]['url'];
             $parts = parse_url($url);
             $url = preg_replace('/\?.*/', '', $url);
+
             $cum = [];
-            for($j = 0; $j < 3; $j++) {
+
+            for ($j = 0; $j < 3; $j++) {
+                $cum[] = 3600;
                 $url = str_replace($parts['path'], $parts['path'] . '/latency.txt?x=' . microtime(true) , $url);
-                curl_setopt($ch, CURLOPT_URL, $url);
-                $response = curl_exec($ch);
-                $info = curl_getinfo($ch);
-                if(($info['http_code'] == 200) && (trim($response) == 'test=test')) {
-                    $cum[] = ($info['starttransfer_time'] - $info['pretransfer_time']) * 1000;
-                } else {
+                try {
+                    $client = new GuzzleClient();
+    
+                    $ping_time = 0;
+    
+                    $options = [
+                        "verify"  => true,
+                        "timeout" => $this->config->getTimeout(),
+                        "curl"    => [
+                            CURLOPT_USERAGENT       => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36",
+                            CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_2_0, // Make http client work with HTTP 2/0
+                            CURLOPT_SSLVERSION      => 1,
+                            CURLOPT_SSL_VERIFYPEER  => false,
+                            CURLOPT_FRESH_CONNECT   => true
+                        ], 
+                        "headers" => [
+                            "accept-language" => "en-US"
+                        ],
+                        "on_stats" => function (GuzzleTransferStats $stats) use ($ping_time) {
+                            $ping_time = $stats->getHandlerStat('starttransfer_time') - $stats->getHandlerStat('pretransfer_time');
+                        }
+                    ];
+    
+                    if (!empty($this->config->getProxy())) {
+                        $proxy_parts = explode('://', $this->config->getProxy());
+                        $options["proxy"] = $proxy_parts[0] == "https" ? $proxy_parts[1] : $this->config->getProxy();
+                    }
+    
+                    $res = $client->request('GET', $url, $options);
+    
+                    $data = $res->getBody()->getContents();
+    
+                    if (!empty($res) && ($res->getStatusCode() == 200) && (trim($data) == 'test=test')) {
+                        $cum[] = $ping_time * 1000;
+                    }
+                } catch (SpeedtestException $e) {
+                    $cum[] = 3600;
+                } catch (\Exception $e) {
                     $cum[] = 3600;
                 }
             }
-            if((array_sum($cum) / count($cum)) < $latency) {
+
+            if ((array_sum($cum) / count($cum)) < $latency) {
                 $latency = array_sum($cum) / count($cum);
                 $fastest = $this->servers[$i];
             }
         }
-        
-        curl_close($ch);
+
         $latency = number_format($latency, 2);
+
         $fastest['latency'] = $latency;
         $this->progress->getResult()->setLatency($latency);
+
         $fastest['d'] = number_format($fastest['d'], 2);
         $this->best = $fastest;
+
         return $this->best;
     }
     
@@ -291,10 +343,6 @@ class Speedtest
      * @param int $uploaded
      */
     protected function progress($ch, $download_size, $downloaded, $upload_size, $uploaded) {
-        // echo 'download_size -> ' . $download_size . '<br>';
-        // echo 'downloaded -> ' . $downloaded . '<br>';
-        // echo 'upload_size -> ' . $upload_size . '<br>';
-        // echo 'uploaded -> ' . $uploaded . '<br><br>';
         $this->progress->progress(intval($ch), $this->mode, ($this->mode == 'download') ? $downloaded : $uploaded);
         if($this->config->getCallback()) {
             call_user_func($this->config->getCallback(), $this->progress->getResult());
@@ -324,12 +372,14 @@ class Speedtest
                 curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
             }
             if (!empty($this->config->getProxy())) {
-                $urlParts = parse_url($this->config->getProxy());
-                if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid proxy configuration " . $this->config->getProxy());
+                if ($this->config->getProxyType() == "socks5") {
+                    $urlParts = parse_url("socks5://" . $this->config->getProxy());
+                } else {
+                    $urlParts = parse_url("http://" . $this->config->getProxy());
                 }
-                $urlParts["host"] = str_replace("https://", "", $urlParts["host"]);
-                $urlParts["host"] = str_replace("http://", "", $urlParts["host"]);
+                if ($urlParts == false || !array_key_exists("host", $urlParts)) {
+                    throw new SpeedtestException("Invalid pattern for" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+                }
                 curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
                 if (isset($urlParts["port"])) {
                     curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"] . ":" . $urlParts["port"]);
@@ -404,12 +454,14 @@ class Speedtest
                 curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
             }
             if (!empty($this->config->getProxy())) {
-                $urlParts = parse_url($this->config->getProxy());
-                if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid proxy configuration " . $this->config->getProxy());
+                if ($this->config->getProxyType() == "socks5") {
+                    $urlParts = parse_url("socks5://" . $this->config->getProxy());
+                } else {
+                    $urlParts = parse_url("http://" . $this->config->getProxy());
                 }
-                $urlParts["host"] = str_replace("https://", "", $urlParts["host"]);
-                $urlParts["host"] = str_replace("http://", "", $urlParts["host"]);
+                if ($urlParts == false || !array_key_exists("host", $urlParts)) {
+                    throw new SpeedtestException("Invalid pattern for" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+                }
                 curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
                 if (isset($urlParts["port"])) {
                     curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"] . ":" . $urlParts["port"]);
