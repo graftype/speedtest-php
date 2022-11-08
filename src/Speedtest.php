@@ -242,14 +242,15 @@ class Speedtest
     /**
      * Get best server
      * 
-     * @param int $checkCount Number of server to check
-     *                        100   Default value
-     *                        1     Production value for faster speedtests    
+     * @param int   $checkCount             Number of server to check
+     *                                      100   Default value
+     *                                      1     Production value for faster speedtests    
+     * @param bool  $skipLatencyRetries     Skip latency check retries for faster speedtests  
      * 
      * @throws SpeedtestException
      * @return string[]
      */
-    public function getBestServer($checkCount = 100) {
+    public function getBestServer($checkCount = 100, $skipLatencyRetries = false) {
         $servers = array_filter($this->servers, function($server) {
             return $server['d'] < 250;
         });
@@ -259,7 +260,8 @@ class Speedtest
         }
 
         if ($checkCount == 1) {
-            $this->best = $servers[0]['d'];
+            $this->best = $this->servers[0];
+            return $this->best;
         }
         
         $latency = PHP_INT_MAX;
@@ -272,7 +274,7 @@ class Speedtest
 
             $cum = [];
 
-            for ($j = 0; $j < 3; $j++) {
+            for ($j = 0; $j < ($skipLatencyRetries ? 1 : 3); $j++) {
                 $cum[] = 3600;
                 $url = str_replace($parts['path'], $parts['path'] . '/latency.txt?x=' . microtime(true) , $url);
                 try {
