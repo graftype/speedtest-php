@@ -1,6 +1,6 @@
 # Speedtest.net for PHP
 
-Library and command line interface to run server-side speedtests via (Speedtest.net)[https://www.speedtest.net/] from cli or web interface.
+Library and command line interface to run server-side speedtests via [Speedtest.net](https://www.speedtest.net/) from cli or web interface.
 
 ![demo](resources/demo.gif)
 
