@@ -544,12 +544,30 @@ class Speedtest
         if($this->config->getSourceAddress()) {
             curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
         }
+        if (!empty($this->config->getProxy())) {
+            if ($this->config->getProxyType() == "socks5") {
+                $urlParts = parse_url("socks5://" . $this->config->getProxy());
+            } else {
+                $urlParts = parse_url("http://" . $this->config->getProxy());
+            }
+            if ($urlParts == false || !array_key_exists("host", $urlParts)) {
+                throw new SpeedtestException("Invalid pattern for" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+            }
+            curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
+            if (isset($urlParts["port"])) {
+                curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"] . ":" . $urlParts["port"]);
+            }
+            if (isset($urlParts["user"])) {
+                curl_setopt($ch, CURLOPT_PROXYUSERPWD, $urlParts["user"] . ":" . $urlParts["pass"]);
+            }
+        }
         curl_setopt($ch, CURLOPT_URL, 'https://www.speedtest.net/api/api.php');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_REFERER, 'http://c.speedtest.net/flash/speedtest.swf');
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->config->getTimeout());
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($apiData));
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36');
         $response = curl_exec($ch);
         $info = curl_getinfo($ch);
         curl_close($ch);
