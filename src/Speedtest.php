@@ -2,6 +2,8 @@
 
 namespace NextpostTech\Speedtest;
 
+use GuzzleHttp\Client as GuzzleClient;
+
 /**
  * Speedtest.net for PHP
  * 
@@ -90,12 +92,37 @@ class Speedtest
     }
     
     /**
+     * Get remote client config
      * 
      * @throws SpeedtestException
      */
     protected function getRemoteConfig() {
         try {
-            $xml = new \SimpleXMLElement("https://www.speedtest.net/speedtest-config.php", null, true);
+            $proxy_parts  = explode('://', $proxy);
+            // $xml = new \SimpleXMLElement("https://www.speedtest.net/speedtest-config.php", null, true);
+            $client = new \GuzzleHttp\Client();
+            $options = [
+                "timeout" => 10,
+                "curl"    => [
+                    CURLOPT_USERAGENT => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36",
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_2_0, // Make http client work with HTTP 2/0
+                    CURLOPT_SSLVERSION => 1,
+                    CURLOPT_SSL_VERIFYPEER => false
+                ], 
+                "headers" => [
+                    "accept-language" => "en-US"
+                ]
+            ];
+            if (!empty($this->config->getProxy())) {
+                $proxy_parts = explode('://', $this->config->getProxy());
+                $options["proxy"] = $proxy_parts[0] == "https" ? $proxy_parts[1] : $this->config->getProxy();
+            }
+            $res = $client->request('GET', 'https://www.speedtest.net/speedtest-config.php', $options);
+            $data = $res->getBody()->getContents();
+            $xml = simplexml_load_string($data);
+            if (empty($xml->client)) {
+                throw new SpeedtestException("Couldn't get remote client config. Reason: empty client data.");
+            }
             $server_config = $xml->{'server-config'};
             $download = $xml->download;
             $upload = $xml->upload;
@@ -125,8 +152,10 @@ class Speedtest
             $this->config->setThreads($threads);
             $this->config->setLength($length);
             $this->config->setUploadMax($upload_count * $size_count);
+        } catch (SpeedtestException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            throw new SpeedtestException("Can not retrieve speedtest configuration");
+            throw new SpeedtestException("Couldn't get remote client config. Reason: " . $e->getMessage());
         }
     }
 
@@ -141,7 +170,31 @@ class Speedtest
         $url = 'https://c.speedtest.net/speedtest-servers-static.php';
         
         try {
-            $xml = new \SimpleXMLElement($url, null, true);
+            throw new SpeedtestException(print_r($this->config->getProxy(), true));
+            if (!empty($this->config->getProxy())) {
+                $opts = [
+                    'http' => [
+                        'method'            => 'GET',
+                        'proxy'             => $this->config->getProxy(),
+                        'request_fulluri'   => true,
+                        'user-agent'        => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'
+                    ],
+                ];
+                $context = stream_context_create($opts);
+                $data = file_get_contents($url, false, $context);
+            } else {
+                $opts = [
+                    'http' => [
+                        'method'            => 'GET',
+                        'user-agent'        => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'
+                    ],
+                ];
+                $context = stream_context_create($opts);
+                $data = file_get_contents($url, false, $context);
+            }
+            // $xml = new \SimpleXMLElement($url, null, true);
+            // throw new SpeedtestException(print_r($data, true));
+            $xml = simplexml_load_string($data);
             foreach($xml->servers->server as $server) {
                 $server = $this->xmlAttributesToArray($server);
                 $id = (int)$server['id'];
@@ -158,7 +211,7 @@ class Speedtest
                 }
             }
         } catch (\Exception $e) {
-            throw new SpeedtestException("Can not retrieve server list");
+            throw new SpeedtestException($e->getMessage());
         }
         
         if(!$list) {
@@ -268,13 +321,13 @@ class Speedtest
         $conn = [];
         foreach ($urls as $url) {
             $ch = curl_init();
-            if($this->config->getSourceAddress()) {
+            if ($this->config->getSourceAddress()) {
                 curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
             }
-            if(!empty($this->config->getProxy())) {
+            if (!empty($this->config->getProxy())) {
                 $urlParts = parse_url($this->config->getProxy());
                 if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid proxy configuration " . $proxy);
+                    throw new SpeedtestException("Invalid proxy configuration " . $this->config->getProxy());
                 }
                 $urlParts["host"] = str_replace("https://", "", $urlParts["host"]);
                 $urlParts["host"] = str_replace("http://", "", $urlParts["host"]);
@@ -348,13 +401,13 @@ class Speedtest
                 $dataCount = 0;
             }
             $ch = curl_init();
-            if($this->config->getSourceAddress()) {
+            if ($this->config->getSourceAddress()) {
                 curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
             }
-            if(!empty($this->config->getProxy())) {
+            if (!empty($this->config->getProxy())) {
                 $urlParts = parse_url($this->config->getProxy());
                 if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid proxy configuration " . $proxy);
+                    throw new SpeedtestException("Invalid proxy configuration " . $this->config->getProxy());
                 }
                 $urlParts["host"] = str_replace("https://", "", $urlParts["host"]);
                 $urlParts["host"] = str_replace("http://", "", $urlParts["host"]);

@@ -300,6 +300,8 @@ class Config
      */
     public function setProxy($proxy)
     {
+        $proxy = str_replace("https://", "", $proxy);
+        $proxy = str_replace("http://", "", $proxy);
         $this->proxy = $proxy;
     }
 }

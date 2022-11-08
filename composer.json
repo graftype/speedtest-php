@@ -15,7 +15,8 @@
   },
   "require": {
     "php": ">=7.0",
-    "ext-curl": ">=7.0"
+    "ext-curl": ">=7.0",
+    "guzzlehttp/guzzle": "^7.4"
   },
   "license": "Apache-2.0",
   "bin": [

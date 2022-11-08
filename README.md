@@ -214,7 +214,7 @@ Output:
 usage: speedtest [-h] [--no-download] [--no-upload] [--single] [--bytes]
                  [--share] [--simple] [--json] [--list] [--server=SERVER]
                  [--exclude=EXCLUDE] [--source=SOURCE] [--timeout=TIMEOUT]
-                 [--version]
+                 [--proxy=PROXY] [--version]
 
 Command line interface to run server-side speedtests via Speedtest.net from cli or web interface.
 --------------------------------------------------------------------------

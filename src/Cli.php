@@ -239,7 +239,7 @@ class Cli
 usage: speedtest [-h] [--no-download] [--no-upload] [--single] [--bytes]
                  [--share] [--simple] [--json] [--list] [--server=SERVER]
                  [--exclude=EXCLUDE] [--source=SOURCE] [--timeout=TIMEOUT]
-                 [--version]
+                 [--proxy=PROXY] [--version]
 
 Command line interface for testing internet bandwidth using speedtest.net.
 --------------------------------------------------------------------------
@@ -268,6 +268,7 @@ optional arguments:
                         separated values
   --source=SOURCE       Source IP address to bind to or interface name
   --timeout=TIMEOUT     HTTP timeout in seconds, default 10
+  --proxy=PROXY         Use a proxied connection for test
   --version             Show the version number
 ';
     }
