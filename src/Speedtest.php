@@ -98,9 +98,8 @@ class Speedtest
      */
     protected function getRemoteConfig() {
         try {
-            $proxy_parts  = explode('://', $proxy);
             // $xml = new \SimpleXMLElement("https://www.speedtest.net/speedtest-config.php", null, true);
-            $client = new \GuzzleHttp\Client();
+            $client = new GuzzleClient();
             $options = [
                 "timeout" => 10,
                 "curl"    => [

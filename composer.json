@@ -10,13 +10,13 @@
   ],
   "autoload": {
     "psr-4": {
-      "NextpostTech\\Speedtest\\": "src"
+      "NextpostTech\\Speedtest\\": "src/"
     }
   },
   "require": {
     "php": ">=7.0",
     "ext-curl": ">=7.0",
-    "guzzlehttp/guzzle": "^7.4"
+    "guzzlehttp/guzzle": "^7.5"
   },
   "license": "Apache-2.0",
   "bin": [
