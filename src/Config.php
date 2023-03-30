@@ -308,7 +308,7 @@ class Config
     {
         $proxy = str_replace("https://", "", $proxy);
         $proxy = str_replace("http://", "", $proxy);
-        if (strpos("socks5://", $proxy) !==  false) {
+        if (strpos($proxy, "socks5://") !==  false) {
             $proxy = str_replace("socks5://", "", $proxy);
             $this->proxyType = "socks5";
         }

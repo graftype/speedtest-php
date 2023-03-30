@@ -112,21 +112,25 @@ class Speedtest
                 ], 
                 "headers" => [
                     "accept-language" => "en-US"
-                ]
+                ],
+                // "debug" => true
             ];
 
-            if (!empty($this->config->getProxy())) {
-                $proxy_parts = explode('://', $this->config->getProxy());
-                $options["proxy"] = $proxy_parts[0] == "https" ? $proxy_parts[1] : $this->config->getProxy();
+            if ($this->config->getProxyType() == "socks5") {
+                $options["proxy"] = "socks5://" . $this->config->getProxy();
+            } else {
+                $options["proxy"] = "http://" . $this->config->getProxy();
             }
 
             $res = $client->request('GET', 'https://www.speedtest.net/speedtest-config.php', $options);
 
             $data = $res->getBody()->getContents();
             $xml = simplexml_load_string($data);
+
             if (empty($xml)) {
                 throw new SpeedtestException("Couldn't get remote client config. Reason: empty xml data.");
             }
+
             $server_config = $xml->{'server-config'};
             $download = $xml->download;
             $upload = $xml->upload;
@@ -189,9 +193,10 @@ class Speedtest
                 ]
             ];
 
-            if (!empty($this->config->getProxy())) {
-                $proxy_parts = explode('://', $this->config->getProxy());
-                $options["proxy"] = $proxy_parts[0] == "https" ? $proxy_parts[1] : $this->config->getProxy();
+            if ($this->config->getProxyType() == "socks5") {
+                $options["proxy"] = "socks5://" . $this->config->getProxy();
+            } else {
+                $options["proxy"] = "http://" . $this->config->getProxy();
             }
 
             $res = $client->request('GET', 'https://c.speedtest.net/speedtest-servers-static.php', $options);
@@ -299,10 +304,11 @@ class Speedtest
                             $ping_time = $stats->getHandlerStat('starttransfer_time') - $stats->getHandlerStat('pretransfer_time');
                         }
                     ];
-    
-                    if (!empty($this->config->getProxy())) {
-                        $proxy_parts = explode('://', $this->config->getProxy());
-                        $options["proxy"] = $proxy_parts[0] == "https" ? $proxy_parts[1] : $this->config->getProxy();
+
+                    if ($this->config->getProxyType() == "socks5") {
+                        $options["proxy"] = "socks5://" . $this->config->getProxy();
+                    } else {
+                        $options["proxy"] = "http://" . $this->config->getProxy();
                     }
     
                     $res = $client->request('GET', $url, $options);
@@ -375,6 +381,7 @@ class Speedtest
             }
             if (!empty($this->config->getProxy())) {
                 if ($this->config->getProxyType() == "socks5") {
+                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
                     $urlParts = parse_url("socks5://" . $this->config->getProxy());
                 } else {
                     $urlParts = parse_url("http://" . $this->config->getProxy());
@@ -457,6 +464,7 @@ class Speedtest
             }
             if (!empty($this->config->getProxy())) {
                 if ($this->config->getProxyType() == "socks5") {
+                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
                     $urlParts = parse_url("socks5://" . $this->config->getProxy());
                 } else {
                     $urlParts = parse_url("http://" . $this->config->getProxy());
@@ -548,6 +556,7 @@ class Speedtest
         }
         if (!empty($this->config->getProxy())) {
             if ($this->config->getProxyType() == "socks5") {
+                curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
                 $urlParts = parse_url("socks5://" . $this->config->getProxy());
             } else {
                 $urlParts = parse_url("http://" . $this->config->getProxy());
