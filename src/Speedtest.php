@@ -118,6 +118,8 @@ class Speedtest
 
             if ($this->config->getProxyType() == "socks5") {
                 $options["proxy"] = "socks5://" . $this->config->getProxy();
+            } elseif ($this->config->getProxyType() == "socks5h") {
+                $options["proxy"] = "socks5h://" . $this->config->getProxy();
             } else {
                 $options["proxy"] = "http://" . $this->config->getProxy();
             }
@@ -195,6 +197,8 @@ class Speedtest
 
             if ($this->config->getProxyType() == "socks5") {
                 $options["proxy"] = "socks5://" . $this->config->getProxy();
+            } elseif ($this->config->getProxyType() == "socks5h") {
+                $options["proxy"] = "socks5h://" . $this->config->getProxy();
             } else {
                 $options["proxy"] = "http://" . $this->config->getProxy();
             }
@@ -307,6 +311,8 @@ class Speedtest
 
                     if ($this->config->getProxyType() == "socks5") {
                         $options["proxy"] = "socks5://" . $this->config->getProxy();
+                    } elseif ($this->config->getProxyType() == "socks5h") {
+                        $options["proxy"] = "socks5h://" . $this->config->getProxy();
                     } else {
                         $options["proxy"] = "http://" . $this->config->getProxy();
                     }
@@ -380,14 +386,17 @@ class Speedtest
                 curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
             }
             if (!empty($this->config->getProxy())) {
-                if ($this->config->getProxyType() == "socks5") {
+                if ($this->config->getProxyType() == "socks5h") {
+                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+                    $urlParts = parse_url("socks5h://" . $this->config->getProxy());
+                } elseif ($this->config->getProxyType() == "socks5") {
                     curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
                     $urlParts = parse_url("socks5://" . $this->config->getProxy());
                 } else {
                     $urlParts = parse_url("http://" . $this->config->getProxy());
                 }
                 if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid pattern for proxy" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+                    throw new SpeedtestException("Invalid pattern for proxy" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port, socks5://username:password@ip:port or socks5h://username:password@ip:port");
                 }
                 curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
                 if (isset($urlParts["port"])) {
@@ -463,14 +472,17 @@ class Speedtest
                 curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
             }
             if (!empty($this->config->getProxy())) {
-                if ($this->config->getProxyType() == "socks5") {
+                if ($this->config->getProxyType() == "socks5h") {
+                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+                    $urlParts = parse_url("socks5h://" . $this->config->getProxy());
+                } elseif ($this->config->getProxyType() == "socks5") {
                     curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
                     $urlParts = parse_url("socks5://" . $this->config->getProxy());
                 } else {
                     $urlParts = parse_url("http://" . $this->config->getProxy());
                 }
                 if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid pattern for proxy" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+                    throw new SpeedtestException("Invalid pattern for proxy" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port, socks5://username:password@ip:port or or socks5h://username:password@ip:port");
                 }
                 curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
                 if (isset($urlParts["port"])) {
@@ -555,14 +567,17 @@ class Speedtest
             curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
         }
         if (!empty($this->config->getProxy())) {
-            if ($this->config->getProxyType() == "socks5") {
+            if ($this->config->getProxyType() == "socks5h") {
+                curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+                $urlParts = parse_url("socks5h://" . $this->config->getProxy());
+            } elseif ($this->config->getProxyType() == "socks5") {
                 curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
                 $urlParts = parse_url("socks5://" . $this->config->getProxy());
             } else {
                 $urlParts = parse_url("http://" . $this->config->getProxy());
             }
             if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                throw new SpeedtestException("Invalid pattern for proxy " . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port or socks5://username:password@ip:port");
+                throw new SpeedtestException("Invalid pattern for proxy " . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port, socks5://username:password@ip:port or or socks5h://username:password@ip:port");
             }
             curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
             if (isset($urlParts["port"])) {

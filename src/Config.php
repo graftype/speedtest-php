@@ -312,6 +312,10 @@ class Config
             $proxy = str_replace("socks5://", "", $proxy);
             $this->proxyType = "socks5";
         }
+        if (strpos($proxy, "socks5h://") !==  false) {
+            $proxy = str_replace("socks5h://", "", $proxy);
+            $this->proxyType = "socks5h";
+        }
         $this->proxy = $proxy;
     }
 
