@@ -39,7 +39,7 @@ Since, our repository are public package we listed this repository on Packagist,
 
 ```console
 cd /path-to-app/
-composer require nextpost-tech/speedtest-php
+composer require graftype/speedtest-php
 ```
 
 ### By updating composer.json file of your project
@@ -54,7 +54,7 @@ composer require nextpost-tech/speedtest-php
         // ---
         // Other packages
         // ---
-        "nextpost-tech/speedtest-php": "^1.0"
+        "graftype/speedtest-php": "^1.0"
     }
 }
 ```
@@ -81,7 +81,7 @@ Use following command, when you need to install library **to new project** using
 ```php
 {
     "require": {
-        "nextpost-tech/speedtest-php": "^1.0"
+        "graftype/speedtest-php": "^1.0"
     }
 }
 ```
