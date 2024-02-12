@@ -1,16 +1,16 @@
 {
-  "name": "nextpost-tech/speedtest-php",
+  "name": "graftype/speedtest-php",
   "description": "Speedtest.net for PHP | Library and command line interface",
   "authors": [
     {
-      "name": "Nextpost.tech",
-      "homepage": "https://nextpost.tech",
+      "name": "Graftype",
+      "homepage": "https://graftype.com",
       "role": "Developer"
     }
   ],
   "autoload": {
     "psr-4": {
-      "NextpostTech\\Speedtest\\": "src/"
+      "Graftype\\Speedtest\\": "src/"
     }
   },
   "require": {

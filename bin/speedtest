@@ -3,8 +3,8 @@
 
 include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
 
-use NextpostTech\Speedtest\Cli;
-use NextpostTech\Speedtest\SpeedtestException;
+use Graftype\Speedtest\Cli;
+use Graftype\Speedtest\SpeedtestException;
 
 try {
     new Cli();

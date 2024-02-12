@@ -6,10 +6,10 @@ Library and command line interface to run server-side speedtests via [Speedtest.
 
 This library is an updated version of [aln-1/speedtest-php](https://github.com/aln-1/speedtest-php) ported from the Python version [sivel/speedtest-cli](https://github.com/sivel/speedtest-cli).
 
-[![Latest Version](https://poser.pugx.org/nextpost-tech/speedtest-php/v)](//packagist.org/packages/nextpost-tech/speedtest-php)
-[![Total Downloads](https://poser.pugx.org/nextpost-tech/speedtest-php/downloads)](//packagist.org/packages/nextpost-tech/speedtest-php)
-[![License](https://poser.pugx.org/nextpost-tech/speedtest-php/license)](//packagist.org/packages/nextpost-tech/speedtest-php)
-[![PHP Version](https://img.shields.io/badge/php-%3E%3D%207.0-blue)](//packagist.org/packages/nextpost-tech/speedtest-php)
+[![Latest Version](https://poser.pugx.org/graftype/speedtest-php/v)](//packagist.org/packages/graftype/speedtest-php)
+[![Total Downloads](https://poser.pugx.org/graftype/speedtest-php/downloads)](//packagist.org/packages/graftype/speedtest-php)
+[![License](https://poser.pugx.org/graftype/speedtest-php/license)](//packagist.org/packages/graftype/speedtest-php)
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D%207.0-blue)](//packagist.org/packages/graftype/speedtest-php)
 
 # Navigation
 
@@ -117,7 +117,7 @@ Code:
 ```php
 require 'vendor/autoload.php';
 
-$speedtest = new NextpostTech\Speedtest\Speedtest();
+$speedtest = new Graftype\Speedtest\Speedtest();
 $speedtest->getServers();
 $speedtest->getBestServer();
 $speedtest->download();
@@ -131,7 +131,7 @@ print_r($results);
 Output:
 
 ```console
-NextpostTech\Speedtest\Result Object
+Graftype\Speedtest\Result Object
 (
     [latency:protected] => 4.57
     [download:protected] => 47888585.578516
@@ -153,10 +153,10 @@ Code:
 ```php
 require 'vendor/autoload.php';
 
-$config = new NextpostTech\Speedtest\Config();
+$config = new Graftype\Speedtest\Config();
 $config->setCallback(function ($results) { print_r($results); });
 
-$speedtest = new NextpostTech\Speedtest\Speedtest($config);
+$speedtest = new Graftype\Speedtest\Speedtest($config);
 $speedtest->getServers();
 $speedtest->getBestServer();
 $speedtest->download();
@@ -165,7 +165,7 @@ $speedtest->download();
 Output:
 
 ```console
-NextpostTech\Speedtest\Result Object
+Graftype\Speedtest\Result Object
 (
     [latency:protected] => 4.40
     [download:protected] => 0
@@ -177,7 +177,7 @@ NextpostTech\Speedtest\Result Object
 // More dump was here ...
 
 ```console
-NextpostTech\Speedtest\Result Object
+Graftype\Speedtest\Result Object
 (
     [latency:protected] => 4.40
     [download:protected] => 27519752.835724
@@ -218,7 +218,7 @@ usage: speedtest [-h] [--no-download] [--no-upload] [--single] [--bytes]
 
 Command line interface to run server-side speedtests via Speedtest.net from cli or web interface.
 --------------------------------------------------------------------------
-https://github.com/nextpost-tech/speedtest-php
+https://github.com/graftype/speedtest-php
 
 optional arguments:
   -h, --help            Show this help message and exit
@@ -251,10 +251,10 @@ optional arguments:
 
 # Support
 
-This is a developer's portal for Speedtest.net for PHP and should not be used for support. Please [contact us via website chat](https://nextpost.tech/#chatraChatExpanded) if you need to submit a support request.
+This is a developer's portal for Speedtest.net for PHP and should not be used for support. Please [contact us via website chat](https://graftype.com/#chatraChatExpanded) if you need to submit a support request.
 
 # Paid Consultations & Personal Help
 
-Please [contact us via website chat](https://nextpost.tech/#chatraChatExpanded) if you need additional help with your own project, we will try to find best options for you.
+Please [contact us via website chat](https://graftype.com/#chatraChatExpanded) if you need additional help with your own project, we will try to find best options for you.
 
 

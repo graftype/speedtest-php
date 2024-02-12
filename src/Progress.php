@@ -1,15 +1,15 @@
 <?php
 
-namespace NextpostTech\Speedtest;
+namespace Graftype\Speedtest;
 
 /**
  * Speedtest.net for PHP
  * 
  * Library and command line interface to run server-side speedtests via Speedtest.net from cli or web interface.
  * 
- * @link https://github.com/nextpost-tech/speedtest-php
+ * @link https://github.com/graftype/speedtest-php
  * 
- * @author Nextpost.tech (https://nextpost.tech)
+ * @author Graftype (https://graftype.com)
  *
  * @source Original PHP version (https://github.com/aln-1/speedtest-php)
  * @source Python version (https://github.com/sivel/speedtest-cli)
@@ -46,7 +46,7 @@ class Progress
     
     /**
      * 
-     * @return \NextpostTech\Speedtest\Result
+     * @return \Graftype\Speedtest\Result
      */
     public function getResult() {
         return $this->result;

@@ -7,13 +7,13 @@ if($_REQUEST['speedtest']) {
         ob_flush();
         flush();
     }
-    $config = new NextpostTech\Speedtest\Config();
+    $config = new Graftype\Speedtest\Config();
     $config->setCallback(function ($result) {
         $download = round((float)$result->getDownload() / 1000 / 1000, 2);
         $upload = round((float)$result->getUpload() / 1000 / 1000, 2);
         output(["result" => ['download' => $download, 'upload' => $upload]]);
     });
-    $speedtest = new NextpostTech\Speedtest\Speedtest($config);
+    $speedtest = new Graftype\Speedtest\Speedtest($config);
     $clientInfo = $speedtest->clientInfo();
     output(['client' => ['isp' => $clientInfo['isp'], 'ip' => $clientInfo['ip']]]);
     $speedtest->getServers();
