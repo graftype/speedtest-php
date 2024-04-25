@@ -537,9 +537,9 @@ class Speedtest
      */
     public function share() {
         $results = $this->results();
-        $latency = !empty($results->getLatency()) ? (int)round($results->getLatency(), 0) : 0;
-        $download = !empty($results->getDownload()) ? (int)round($results->getDownload() / 1000, 0) : 0;
-        $upload = !empty($results->getUpload()) ? (int)round($results->getUpload() / 1000, 0) : 0;
+        $latency = !empty($results->getLatency()) ? (int) round((float) $results->getLatency(), 0) : 0;
+        $download = !empty($results->getDownload()) ? (int) round((float) $results->getDownload() / 1000, 0) : 0;
+        $upload = !empty($results->getUpload()) ? (int) round((float) $results->getUpload() / 1000, 0) : 0;
         $bytesReceived = (int)$results->getBytesReceived();
         $bytesSent = (int)$results->getBytesSent();
         $hash = md5("$latency-$upload-$download-297aae72");
