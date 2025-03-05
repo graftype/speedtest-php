@@ -1,7 +1,11 @@
 #!/usr/bin/env php
 <?php
 
-include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+if (isset($_composer_autoload_path) || file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+} elseif (file_exists(dirname(__DIR__, 4) . '/vendor/autoload.php')) {
+    include dirname(__DIR__, 4) . '/vendor/autoload.php';
+}
 
 use Graftype\Speedtest\Cli;
 use Graftype\Speedtest\SpeedtestException;
