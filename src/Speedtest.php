@@ -20,6 +20,43 @@ use GuzzleHttp\TransferStats as GuzzleTransferStats;
 
 class Speedtest
 {
+    /** Internal relay headers never leave the loopback connection. */
+    protected function relayHeaders($url) {
+        $relay = $this->config->getRelay();
+        return [
+            'X-Tls-Key' => $relay['key'],
+            'X-Tls-Url' => $url,
+            'X-Tls-Proxy' => $this->config->getProxy() ? $this->config->getProxyType() . '://' . $this->config->getProxy() : '',
+            'X-Tls-Verify' => $relay['verify'] ? 'true' : 'false',
+            'X-Tls-IgMobile' => $relay['mobile'] ? '1' : '0',
+            'X-Tls-Follow-Redirects' => 'false',
+            'X-Tls-Timeout' => (string)$this->config->getTimeout()
+        ];
+    }
+
+    protected function request($client, $url, array $options) {
+        $relay = $this->config->getRelay();
+        if (!$relay) return $client->request('GET', $url, $options);
+        $onStats = $options['on_stats'] ?? null;
+        $headers = $options['headers'] ?? [];
+        $options['proxy'] = '';
+        $options['allow_redirects'] = false;
+        $options['version'] = 1.1;
+        unset($options['curl'][CURLOPT_HTTP_VERSION]);
+        for ($redirect = 0; $redirect <= 3; ++$redirect) {
+            $options['headers'] = array_merge($headers, $this->relayHeaders($url));
+            $options['on_stats'] = function ($stats) use ($onStats, $url) {
+                if ($onStats) $onStats(new GuzzleTransferStats(new \GuzzleHttp\Psr7\Request('GET', $url), $stats->getResponse(), $stats->getTransferTime(), $stats->getHandlerErrorData(), $stats->getHandlerStats()));
+            };
+            $response = $client->request('GET', $relay['url'], $options);
+            if (!in_array($response->getStatusCode(), [301, 302, 303, 307, 308], true) || !$response->hasHeader('Location')) return $response;
+            $next = \GuzzleHttp\Psr7\UriResolver::resolve(\GuzzleHttp\Psr7\Utils::uriFor($url), \GuzzleHttp\Psr7\Utils::uriFor($response->getHeaderLine('Location')));
+            if (!in_array($next->getScheme(), ['http', 'https'], true)) throw new SpeedtestException('Unsupported speed test redirect.');
+            $url = (string)$next;
+        }
+        throw new SpeedtestException('Speed test exceeded the redirect limit.');
+    }
+
     /**
      * 
      * @var Config
@@ -127,9 +164,9 @@ class Speedtest
             }
 
             try {
-                $res = $client->request('GET', 'https://c.speedtest.net/speedtest-config.php', $options);
+                $res = $this->request($client, 'https://c.speedtest.net/speedtest-config.php', $options);
             } catch (\Exception $e) {
-                $res = $client->request('GET', 'https://www.speedtest.net/speedtest-config.php', $options);
+                $res = $this->request($client, 'https://www.speedtest.net/speedtest-config.php', $options);
             }
 
             $data = $res->getBody()->getContents();
@@ -211,7 +248,7 @@ class Speedtest
                 $options["proxy"] = $this->config->getProxyType() . "://" . $this->config->getProxy();
             }
 
-            $res = $client->request('GET', 'https://c.speedtest.net/speedtest-servers-static.php', $options);
+            $res = $this->request($client, 'https://c.speedtest.net/speedtest-servers-static.php', $options);
 
             $data = $res->getBody()->getContents();
             $xml = simplexml_load_string($data);
@@ -223,6 +260,12 @@ class Speedtest
             foreach($xml->servers->server as $server) {
                 $server = $this->xmlAttributesToArray($server);
                 $id = (int)$server['id'];
+                if ($this->config->getRelay() && $id > 0 && parse_url($server['url'], PHP_URL_SCHEME) === 'http') {
+                    // TLSClientProxy requires TLS targets. Ookla's canonical certificate
+                    // hostname avoids HTTP-only aliases and their large-POST redirects.
+                    $server['url'] = 'https://server-' . $id . '.prod.hosts.ooklaserver.net:8080' . parse_url($server['url'], PHP_URL_PATH);
+                }
+
                 
                 if((!$this->config->getUseServers() || in_array($id, $this->config->getUseServers()))
                     && !in_array($id, $this->config->getIgnoreServers())) {
@@ -278,10 +321,6 @@ class Speedtest
 
         if (!$this->servers) throw new SpeedtestException("No test servers available.");
 
-        if ($checkCount == 1) {
-            $this->best = $this->servers[0];
-            return $this->best;
-        }
         
         $latency = PHP_INT_MAX;
         $fastest = null;
@@ -292,6 +331,7 @@ class Speedtest
             $url = preg_replace('/\?.*/', '', $url);
 
             $cum = [];
+            $candidate = $this->servers[$i];
 
             for ($j = 0; $j < ($skipLatencyRetries ? 1 : 3); $j++) {
                 $url = preg_replace('~/[^/]*$~', '', preg_replace('/[?#].*$/', '', $this->servers[$i]['url'])) . '/latency.txt?x=' . microtime(true);
@@ -299,6 +339,7 @@ class Speedtest
                     $client = new GuzzleClient();
     
                     $ping_time = 0;
+                    $effectiveLatencyUrl = $url;
     
                     $options = [
                         "verify"  => true,
@@ -313,14 +354,15 @@ class Speedtest
                         "headers" => [
                             "accept-language" => "en-US"
                         ],
-                        "on_stats" => function (GuzzleTransferStats $stats) use (&$ping_time) {
+                        "on_stats" => function (GuzzleTransferStats $stats) use (&$ping_time, &$effectiveLatencyUrl) {
                             $ping_time = $stats->getHandlerStat('starttransfer_time') - $stats->getHandlerStat('pretransfer_time');
+                            $effectiveLatencyUrl = (string)$stats->getEffectiveUri();
                         }
                     ];
 
                     if (!$this->config->getProxy()) {
-                $options["proxy"] = null;
-            } elseif ($this->config->getProxyType() == "socks5") {
+                        $options["proxy"] = null;
+                    } elseif ($this->config->getProxyType() == "socks5") {
                         $options["proxy"] = "socks5://" . $this->config->getProxy();
                     } elseif ($this->config->getProxyType() == "socks5h") {
                         $options["proxy"] = "socks5h://" . $this->config->getProxy();
@@ -328,12 +370,16 @@ class Speedtest
                         $options["proxy"] = $this->config->getProxyType() . "://" . $this->config->getProxy();
                     }
     
-                    $res = $client->request('GET', $url, $options);
+                    $res = $this->request($client, $url, $options);
     
                     $data = $res->getBody()->getContents();
     
                     if (!empty($res) && ($res->getStatusCode() == 200) && (trim($data) == 'test=test')) {
                         $cum[] = max(0.001, $ping_time * 1000);
+                        // Resolve redirects with the small latency request before sending upload bodies.
+                        // Some proxy/server paths close large HTTP POSTs before returning a redirect.
+                        $endpoint = basename(parse_url($this->servers[$i]['url'], PHP_URL_PATH));
+                        $candidate['url'] = preg_replace('~/[^/]*$~', '', preg_replace('/[?#].*$/', '', $effectiveLatencyUrl)) . '/' . $endpoint;
                     }
                 } catch (SpeedtestException $e) {
                     $cum[] = 3600;
@@ -344,7 +390,7 @@ class Speedtest
 
             if ($cum && min($cum) < 3600 && (array_sum($cum) / count($cum)) < $latency) {
                 $latency = array_sum($cum) / count($cum);
-                $fastest = $this->servers[$i];
+                $fastest = $candidate;
             }
         }
 
@@ -407,10 +453,12 @@ class Speedtest
         $connections = max(1, min(8, $this->config->isSingle() ? 1 : ($threads ?: $this->config->getThreads()[$mode])));
         curl_multi_setopt($mh, CURLMOPT_MAX_TOTAL_CONNECTIONS, $connections);
         $handles = [];
+        $relay = $this->config->getRelay();
         $bytes = 0;
         $successes = 0;
         $lastError = 'No successful transfers';
         $started = microtime(true);
+        $lastRelaySample = 0;
         $deadline = max(1, min(20, $this->config->getLength()[$mode] ?? 10));
         $this->progress->start();
         try {
@@ -443,6 +491,13 @@ class Speedtest
                     $size = min(2097152, $sizes[$i % count($sizes)] ?? 262144);
                     curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => str_repeat('0123456789abcdef', (int)ceil($size / 16)), CURLOPT_HTTPHEADER => ['Content-Type: application/octet-stream', 'Expect:']]);
                 }
+                if ($relay) {
+                    $headers = $this->relayHeaders($url);
+                    if ($mode === 'upload') $headers = array_merge($headers, ['Content-Type' => 'application/octet-stream', 'Expect' => '']);
+                    $lines = [];
+                    foreach ($headers as $name => $value) $lines[] = $name . ': ' . $value;
+                    curl_setopt_array($ch, [CURLOPT_URL => $relay['url'], CURLOPT_PROXY => '', CURLOPT_HTTPHEADER => $lines, CURLOPT_FOLLOWLOCATION => false, CURLOPT_NOPROGRESS => true]);
+                }
                 curl_multi_add_handle($mh, $ch);
             }
             do {
@@ -455,9 +510,20 @@ class Speedtest
                     if ($info['result'] === CURLE_OK && $code >= 200 && $code < 300 && $size > 0 && stripos($type, 'text/html') === false) {
                         $bytes += $size;
                         ++$successes;
+                        if ($relay) {
+                            // The relay buffers bodies. Count acknowledged upstream transfers,
+                            // never the fast loopback leg as proxy upload/download bandwidth.
+                            $this->progress->progress(0, $mode, $bytes);
+                            if ($this->config->getCallback()) call_user_func($this->config->getCallback(), $this->progress->getResult());
+                        }
                     } else {
                         $lastError = 'HTTP ' . $code . ', cURL ' . $info['result'];
                     }
+                }
+                if ($relay && microtime(true) - $lastRelaySample >= 0.25) {
+                    $lastRelaySample = microtime(true);
+                    $this->progress->progress(0, $mode, $bytes);
+                    if ($this->config->getCallback()) call_user_func($this->config->getCallback(), $this->progress->getResult());
                 }
                 if ($active && $status === CURLM_OK) curl_multi_select($mh, 0.1);
             } while ($active && $status === CURLM_OK && microtime(true) - $started < $deadline);

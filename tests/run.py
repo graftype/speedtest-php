@@ -11,3 +11,6 @@ with tempfile.TemporaryDirectory() as d:
     finally:
         server.terminate()
         server.wait()
+
+for script in ["server-redirect.php", "relay.php"]:
+    subprocess.run(["php", str(root/script)], check=True)

@@ -267,3 +267,14 @@ Fix proxy download/upload measurements with classic Speedtest servers. Download 
 Only completed, successful HTTP transfers with a nonempty payload contribute to the final rate. HTTP errors, HTML error pages, unreachable servers and zero-byte transfers throw `SpeedtestException`. Transfers are bounded to the configured test length (at most 20 seconds per direction), cap concurrency at eight, discard download bodies to limit memory, and validate TLS certificates. Progress callbacks are live provisional measurements; final results count validated completed transfers. A failed direction leaves that direction at zero and must not be presented as a successful speed test.
 
 Run local regressions after `composer install`: `python3 tests/run.py`. The fixture covers real byte counts, HTTP proxy routing, latency, live progress and failed transfers without external network calls. Set `SPEEDTEST_AUTOLOAD` to an existing Composer autoloader when testing a vendored copy.
+
+
+### 1.0.15
+
+Resolve the effective upload endpoint during the small latency probe. This prevents empty HTTP replies (cURL 52) when a proxy/server path closes a large POST before returning its HTTP-to-HTTPS redirect. Single-server selection also runs the latency probe.
+
+Direct proxy tests remain the default. Optionally call `$config->setRelay('http://127.0.0.1:8383', $accessKey, true)` before constructing `Speedtest` to measure through an existing TLSClientProxy and the configured upstream proxy. The third parameter controls certificate verification. Config, server discovery, latency and transfer requests all use the relay; an unavailable or rejected relay does not silently fall back to a direct connection. TLS targets use the canonical Ookla server certificate hostnames, and loopback requests use HTTP/1.1. Measurement redirects are resolved on the loopback transport without sending relay headers to upstream hosts.
+
+The relay buffers HTTP bodies. Its live and final measurements therefore use completed upstream transfers and total elapsed time, rather than the fast local upload to the relay. Periodic progress callbacks keep elapsed-time charts moving while buffered upstream responses are pending. Existing direct mode keeps native cURL transfer progress. The optional legacy `share()` method is unchanged; it is separate from measurement and is not used by Proxy Manager Pro's saved result panel.
+
+Validation: direct and relay local fixtures, exact bytes, server redirects, single-server resolution, rejected relay authentication and no direct fallback; full direct and configured TLSClientProxy tests through a real proxy on PHP 8.3. PHP 7-compatible syntax retained; no PHP 7 runtime was available.

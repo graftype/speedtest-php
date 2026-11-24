@@ -17,6 +17,20 @@ namespace Graftype\Speedtest;
 
 class Config
 {
+    /** Optional HTTP relay. Direct proxy measurements remain the default. */
+    protected $relay = null;
+
+    public function setRelay($url, $key, $verify = true, $mobile = false)
+    {
+        $parts = parse_url($url);
+        if (!$parts || ($parts['scheme'] ?? '') !== 'http' || !in_array($parts['host'] ?? '', ['127.0.0.1', 'localhost', '::1'], true) || $key === '' || preg_match('/[\r\n]/', $key)) {
+            throw new \InvalidArgumentException('Invalid TLSClientProxy configuration.');
+        }
+        $this->relay = ['url' => $url, 'key' => $key, 'verify' => (bool)$verify, 'mobile' => (bool)$mobile];
+    }
+
+    public function getRelay() { return $this->relay; }
+
     /**
      * 
      * @var string
