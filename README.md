@@ -258,3 +258,12 @@ This is a developer's portal for Speedtest.net for PHP and should not be used fo
 Please [contact us via website chat](https://graftype.com/#chatraChatExpanded) if you need additional help with your own project, we will try to find best options for you.
 
 
+
+
+### 1.0.14
+
+Fix proxy download/upload measurements with classic Speedtest servers. Download requests now use sibling `random{width}x{height}.jpg` resources instead of appending `/download` to `upload.php`. Fix latency URL construction, callback timing and PHP 8 CurlHandle identities. Use the working `c.speedtest.net` configuration endpoint with the original host as fallback. Follow up to three HTTP(S) redirects, preserve HTTP/HTTPS/SOCKS5/SOCKS5H proxy transport, and retain remote DNS with SOCKS5H.
+
+Only completed, successful HTTP transfers with a nonempty payload contribute to the final rate. HTTP errors, HTML error pages, unreachable servers and zero-byte transfers throw `SpeedtestException`. Transfers are bounded to the configured test length (at most 20 seconds per direction), cap concurrency at eight, discard download bodies to limit memory, and validate TLS certificates. Progress callbacks are live provisional measurements; final results count validated completed transfers. A failed direction leaves that direction at zero and must not be presented as a successful speed test.
+
+Run local regressions after `composer install`: `python3 tests/run.py`. The fixture covers real byte counts, HTTP proxy routing, latency, live progress and failed transfers without external network calls. Set `SPEEDTEST_AUTOLOAD` to an existing Composer autoloader when testing a vendored copy.

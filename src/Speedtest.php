@@ -108,7 +108,7 @@ class Speedtest
                     CURLOPT_USERAGENT       => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36",
                     CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_2_0, // Make http client work with HTTP 2/0
                     CURLOPT_SSLVERSION      => 1,
-                    CURLOPT_SSL_VERIFYPEER  => false
+                    CURLOPT_SSL_VERIFYPEER  => true
                 ], 
                 "headers" => [
                     "accept-language" => "en-US"
@@ -116,15 +116,21 @@ class Speedtest
                 // "debug" => true
             ];
 
-            if ($this->config->getProxyType() == "socks5") {
+            if (!$this->config->getProxy()) {
+                $options["proxy"] = null;
+            } elseif ($this->config->getProxyType() == "socks5") {
                 $options["proxy"] = "socks5://" . $this->config->getProxy();
             } elseif ($this->config->getProxyType() == "socks5h") {
                 $options["proxy"] = "socks5h://" . $this->config->getProxy();
             } else {
-                $options["proxy"] = "http://" . $this->config->getProxy();
+                $options["proxy"] = $this->config->getProxyType() . "://" . $this->config->getProxy();
             }
 
-            $res = $client->request('GET', 'https://www.speedtest.net/speedtest-config.php', $options);
+            try {
+                $res = $client->request('GET', 'https://c.speedtest.net/speedtest-config.php', $options);
+            } catch (\Exception $e) {
+                $res = $client->request('GET', 'https://www.speedtest.net/speedtest-config.php', $options);
+            }
 
             $data = $res->getBody()->getContents();
             $xml = simplexml_load_string($data);
@@ -188,19 +194,21 @@ class Speedtest
                     CURLOPT_USERAGENT       => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36",
                     CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_2_0, // Make http client work with HTTP 2/0
                     CURLOPT_SSLVERSION      => 1,
-                    CURLOPT_SSL_VERIFYPEER  => false
+                    CURLOPT_SSL_VERIFYPEER  => true
                 ], 
                 "headers" => [
                     "accept-language" => "en-US"
                 ]
             ];
 
-            if ($this->config->getProxyType() == "socks5") {
+            if (!$this->config->getProxy()) {
+                $options["proxy"] = null;
+            } elseif ($this->config->getProxyType() == "socks5") {
                 $options["proxy"] = "socks5://" . $this->config->getProxy();
             } elseif ($this->config->getProxyType() == "socks5h") {
                 $options["proxy"] = "socks5h://" . $this->config->getProxy();
             } else {
-                $options["proxy"] = "http://" . $this->config->getProxy();
+                $options["proxy"] = $this->config->getProxyType() . "://" . $this->config->getProxy();
             }
 
             $res = $client->request('GET', 'https://c.speedtest.net/speedtest-servers-static.php', $options);
@@ -265,8 +273,10 @@ class Speedtest
         });
 
         if ($servers) {
-            $this->servers = $servers;
+            $this->servers = array_values($servers);
         }
+
+        if (!$this->servers) throw new SpeedtestException("No test servers available.");
 
         if ($checkCount == 1) {
             $this->best = $this->servers[0];
@@ -284,8 +294,7 @@ class Speedtest
             $cum = [];
 
             for ($j = 0; $j < ($skipLatencyRetries ? 1 : 3); $j++) {
-                $cum[] = 3600;
-                $url = str_replace($parts['path'], $parts['path'] . '/latency.txt?x=' . microtime(true) , $url);
+                $url = preg_replace('~/[^/]*$~', '', preg_replace('/[?#].*$/', '', $this->servers[$i]['url'])) . '/latency.txt?x=' . microtime(true);
                 try {
                     $client = new GuzzleClient();
     
@@ -298,23 +307,25 @@ class Speedtest
                             CURLOPT_USERAGENT       => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36",
                             CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_2_0, // Make http client work with HTTP 2/0
                             CURLOPT_SSLVERSION      => 1,
-                            CURLOPT_SSL_VERIFYPEER  => false,
+                            CURLOPT_SSL_VERIFYPEER  => true,
                             CURLOPT_FRESH_CONNECT   => true
                         ], 
                         "headers" => [
                             "accept-language" => "en-US"
                         ],
-                        "on_stats" => function (GuzzleTransferStats $stats) use ($ping_time) {
+                        "on_stats" => function (GuzzleTransferStats $stats) use (&$ping_time) {
                             $ping_time = $stats->getHandlerStat('starttransfer_time') - $stats->getHandlerStat('pretransfer_time');
                         }
                     ];
 
-                    if ($this->config->getProxyType() == "socks5") {
+                    if (!$this->config->getProxy()) {
+                $options["proxy"] = null;
+            } elseif ($this->config->getProxyType() == "socks5") {
                         $options["proxy"] = "socks5://" . $this->config->getProxy();
                     } elseif ($this->config->getProxyType() == "socks5h") {
                         $options["proxy"] = "socks5h://" . $this->config->getProxy();
                     } else {
-                        $options["proxy"] = "http://" . $this->config->getProxy();
+                        $options["proxy"] = $this->config->getProxyType() . "://" . $this->config->getProxy();
                     }
     
                     $res = $client->request('GET', $url, $options);
@@ -322,7 +333,7 @@ class Speedtest
                     $data = $res->getBody()->getContents();
     
                     if (!empty($res) && ($res->getStatusCode() == 200) && (trim($data) == 'test=test')) {
-                        $cum[] = $ping_time * 1000;
+                        $cum[] = max(0.001, $ping_time * 1000);
                     }
                 } catch (SpeedtestException $e) {
                     $cum[] = 3600;
@@ -331,13 +342,14 @@ class Speedtest
                 }
             }
 
-            if ((array_sum($cum) / count($cum)) < $latency) {
+            if ($cum && min($cum) < 3600 && (array_sum($cum) / count($cum)) < $latency) {
                 $latency = array_sum($cum) / count($cum);
                 $fastest = $this->servers[$i];
             }
         }
 
-        $latency = number_format($latency, 2);
+        if (!$fastest) throw new SpeedtestException("No reachable test server. Check the proxy connection.");
+        $latency = round($latency, 2);
 
         $fastest['latency'] = $latency;
         $this->progress->getResult()->setLatency($latency);
@@ -357,7 +369,7 @@ class Speedtest
      * @param int $uploaded
      */
     protected function progress($ch, $download_size, $downloaded, $upload_size, $uploaded) {
-        $this->progress->progress(intval($ch), $this->mode, ($this->mode == 'download') ? $downloaded : $uploaded);
+        $this->progress->progress((is_object($ch) ? spl_object_id($ch) : (int)$ch), $this->mode, ($this->mode == 'download') ? $downloaded : $uploaded);
         if($this->config->getCallback()) {
             call_user_func($this->config->getCallback(), $this->progress->getResult());
         }
@@ -368,170 +380,109 @@ class Speedtest
      * @param int $threads
      */
     public function download($threads = null) {
-        $this->mode = 'download';
-        
+        $base = $this->transferBase();
         $urls = [];
-        $parts = parse_url($this->best['url']);
-        foreach ($this->config->getSizes()['download'] as $size) {
-            $urls[] = str_replace($parts['path'], $parts['path'] . '/download?size=' . $size, $this->best['url']);
+        foreach ([350, 500, 750, 1000, 1500, 2000, 2500, 3000, 3500, 4000] as $size) {
+            $urls[] = $base . '/random' . $size . 'x' . $size . '.jpg?x=' . microtime(true);
         }
-
-        $mh = curl_multi_init();
-        $maxConnections = $this->config->isSingle() ? 1 : ($threads ?: $this->config->getThreads()['download']);
-        curl_multi_setopt($mh, CURLMOPT_MAX_TOTAL_CONNECTIONS, $maxConnections);
-        $conn = [];
-        foreach ($urls as $url) {
-            $ch = curl_init();
-            if ($this->config->getSourceAddress()) {
-                curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
-            }
-            if (!empty($this->config->getProxy())) {
-                if ($this->config->getProxyType() == "socks5h") {
-                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-                    $urlParts = parse_url("socks5h://" . $this->config->getProxy());
-                } elseif ($this->config->getProxyType() == "socks5") {
-                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-                    $urlParts = parse_url("socks5://" . $this->config->getProxy());
-                } else {
-                    $urlParts = parse_url("http://" . $this->config->getProxy());
-                }
-                if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid pattern for proxy" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port, socks5://username:password@ip:port or socks5h://username:password@ip:port");
-                }
-                curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
-                if (isset($urlParts["port"])) {
-                    curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"] . ":" . $urlParts["port"]);
-                }
-                if (isset($urlParts["user"])) {
-                    curl_setopt($ch, CURLOPT_PROXYUSERPWD, $urlParts["user"] . ":" . $urlParts["pass"]);
-                }
-            }
-            curl_setopt($ch, CURLOPT_HEADER, 0);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, $this->config->getTimeout());
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'progress']);
-            curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36');
-            curl_multi_add_handle($mh, $ch);
-            $conn[] = $ch;
-        }
-        
-        $this->progress->start();
-        
-        do {
-            $active = false;
-            $status = curl_multi_exec($mh, $active);
-            if ($active) {
-                curl_multi_select($mh);
-            }
-            // // Debugging
-            // while ($info = curl_multi_info_read($mh)) {
-            //     echo '<pre>';
-            //     if ($info['result'] === 0) {
-            //         echo curl_getinfo($info['handle'],CURLINFO_EFFECTIVE_URL) . ' success<br>';
-            //     } else {
-            //         echo curl_getinfo($info['handle'],CURLINFO_EFFECTIVE_URL) . ' failed<br>';
-            //     } 
-            // }
-        } while ($active && $status == CURLM_OK);
-
-        foreach ($conn as $i => $ch) {
-            curl_multi_remove_handle($mh, $ch);
-            curl_close($ch);
-        }
-        curl_multi_close($mh);
+        $this->transfer('download', $urls, $threads);
     }
 
-    /**
-     *
-     * @param int $threads
-     */
     public function upload($threads = null) {
-        $this->mode = 'upload';
-        
-        $datas = [];
-        $sizes = $this->config->getSizes()['upload'];
-        $requestCount = $this->config->getUploadMax();
-        foreach ($sizes as $size) {
-            $datas[] = random_bytes($size);
-        }
-        
-        $mh = curl_multi_init();
-        $maxConnections = $this->config->isSingle() ? 1 : ($threads ?: $this->config->getThreads()['upload']);
-        curl_multi_setopt($mh, CURLMOPT_MAX_TOTAL_CONNECTIONS, $maxConnections);
-        $conn = [];
-        $dataCount = 0;
-        for($i = 0; $i < $requestCount; $i++) {
-            $data = $datas[$dataCount++];
-            if($dataCount == count($datas)) {
-                $dataCount = 0;
-            }
-            $ch = curl_init();
-            if ($this->config->getSourceAddress()) {
-                curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
-            }
-            if (!empty($this->config->getProxy())) {
-                if ($this->config->getProxyType() == "socks5h") {
-                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-                    $urlParts = parse_url("socks5h://" . $this->config->getProxy());
-                } elseif ($this->config->getProxyType() == "socks5") {
-                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-                    $urlParts = parse_url("socks5://" . $this->config->getProxy());
-                } else {
-                    $urlParts = parse_url("http://" . $this->config->getProxy());
-                }
-                if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                    throw new SpeedtestException("Invalid pattern for proxy" . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port, socks5://username:password@ip:port or or socks5h://username:password@ip:port");
-                }
-                curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
-                if (isset($urlParts["port"])) {
-                    curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"] . ":" . $urlParts["port"]);
-                }
-                if (isset($urlParts["user"])) {
-                    curl_setopt($ch, CURLOPT_PROXYUSERPWD, $urlParts["user"] . ":" . $urlParts["pass"]);
-                }
-            }
-            curl_setopt($ch, CURLOPT_HEADER, 0);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, $this->config->getTimeout());
-            curl_setopt($ch, CURLOPT_URL, $this->best['url']);
-            curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'progress']);
-            curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-length:' . strlen($data)]);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36');
-            curl_multi_add_handle($mh, $ch);
-            $conn[] = $ch;
-        }
-        
-        $this->progress->start();
-        
-        do {
-            $active = false;
-            $status = curl_multi_exec($mh, $active);
-            if ($active) {
-                curl_multi_select($mh);
-            }
-            // // Debugging
-            // while ($info = curl_multi_info_read($mh)) {
-            //     echo '<pre>';
-            //     if ($info['result'] === 0) {
-            //         echo curl_getinfo($info['handle'],CURLINFO_EFFECTIVE_URL) . ' success<br>';
-            //     } else {
-            //         echo curl_getinfo($info['handle'],CURLINFO_EFFECTIVE_URL) . ' failed<br>';
-            //     } 
-            // }
-        } while ($active && $status == CURLM_OK);
-        
-        foreach ($conn as $ch) {
-            curl_multi_remove_handle($mh, $ch);
-            curl_close($ch);
-        }
-        curl_multi_close($mh);
+        $this->transfer('upload', array_fill(0, max(1, min(20, $this->config->getUploadMax())), $this->best['url']), $threads);
     }
-    
+
+    protected function transferBase() {
+        if (empty($this->best['url'])) {
+            throw new SpeedtestException('Select a reachable test server before measuring transfer speed.');
+        }
+        return preg_replace('~/[^/]*$~', '', preg_replace('/[?#].*$/', '', $this->best['url']));
+    }
+
+    /** Count only successful HTTP transfers; never report an error page as bandwidth. */
+    protected function transfer($mode, array $urls, $threads) {
+        $this->transferBase();
+        $this->mode = $mode;
+        $mh = curl_multi_init();
+        $connections = max(1, min(8, $this->config->isSingle() ? 1 : ($threads ?: $this->config->getThreads()[$mode])));
+        curl_multi_setopt($mh, CURLMOPT_MAX_TOTAL_CONNECTIONS, $connections);
+        $handles = [];
+        $bytes = 0;
+        $successes = 0;
+        $lastError = 'No successful transfers';
+        $started = microtime(true);
+        $deadline = max(1, min(20, $this->config->getLength()[$mode] ?? 10));
+        $this->progress->start();
+        try {
+            foreach ($urls as $i => $url) {
+                $ch = curl_init($url);
+                $handles[] = $ch;
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => false,
+                    CURLOPT_WRITEFUNCTION => static function ($ch, $chunk) { return strlen($chunk); },
+                    CURLOPT_TIMEOUT => $this->config->getTimeout(),
+                    CURLOPT_CONNECTTIMEOUT => min(5, $this->config->getTimeout()),
+                    CURLOPT_FAILONERROR => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_MAXREDIRS => 3,
+                    CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+                    CURLOPT_POSTREDIR => CURL_REDIR_POST_ALL,
+                    CURLOPT_NOPROGRESS => false,
+                    CURLOPT_PROGRESSFUNCTION => [$this, 'progress'],
+                    CURLOPT_USERAGENT => 'Speedtest-PHP/1.0.14',
+                    CURLOPT_NOSIGNAL => true
+                ]);
+                if ($this->config->getSourceAddress()) curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
+                if ($this->config->getProxy()) {
+                    curl_setopt($ch, CURLOPT_PROXY, $this->config->getProxyType() . '://' . $this->config->getProxy());
+                    // An environment NO_PROXY must not bypass the configured test proxy.
+                    curl_setopt($ch, CURLOPT_NOPROXY, '');
+                }
+                if ($mode === 'upload') {
+                    $sizes = $this->config->getSizes()['upload'];
+                    $size = min(2097152, $sizes[$i % count($sizes)] ?? 262144);
+                    curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => str_repeat('0123456789abcdef', (int)ceil($size / 16)), CURLOPT_HTTPHEADER => ['Content-Type: application/octet-stream', 'Expect:']]);
+                }
+                curl_multi_add_handle($mh, $ch);
+            }
+            do {
+                $status = curl_multi_exec($mh, $active);
+                while ($info = curl_multi_info_read($mh)) {
+                    $ch = $info['handle'];
+                    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    $type = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+                    $size = curl_getinfo($ch, $mode === 'download' ? CURLINFO_SIZE_DOWNLOAD : CURLINFO_SIZE_UPLOAD);
+                    if ($info['result'] === CURLE_OK && $code >= 200 && $code < 300 && $size > 0 && stripos($type, 'text/html') === false) {
+                        $bytes += $size;
+                        ++$successes;
+                    } else {
+                        $lastError = 'HTTP ' . $code . ', cURL ' . $info['result'];
+                    }
+                }
+                if ($active && $status === CURLM_OK) curl_multi_select($mh, 0.1);
+            } while ($active && $status === CURLM_OK && microtime(true) - $started < $deadline);
+        } finally {
+            foreach ($handles as $ch) {
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+            }
+            curl_multi_close($mh);
+        }
+        $result = $this->progress->getResult();
+        $speed = $bytes * 8 / max(0.001, microtime(true) - $started);
+        if ($mode === 'download') {
+            $result->setDownload($speed);
+            $result->setBytesReceived($bytes);
+        } else {
+            $result->setUpload($speed);
+            $result->setBytesSent($bytes);
+        }
+        if (!$successes || $speed <= 0 || !is_finite($speed)) {
+            throw new SpeedtestException(ucfirst($mode) . ' measurement failed (' . $lastError . '). Try another proxy or test server.');
+        }
+        if ($this->config->getCallback()) call_user_func($this->config->getCallback(), $result);
+    }
+
     /**
      * @return string
      */
@@ -566,26 +517,9 @@ class Speedtest
         if($this->config->getSourceAddress()) {
             curl_setopt($ch, CURLOPT_INTERFACE, $this->config->getSourceAddress());
         }
-        if (!empty($this->config->getProxy())) {
-            if ($this->config->getProxyType() == "socks5h") {
-                curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-                $urlParts = parse_url("socks5h://" . $this->config->getProxy());
-            } elseif ($this->config->getProxyType() == "socks5") {
-                curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-                $urlParts = parse_url("socks5://" . $this->config->getProxy());
-            } else {
-                $urlParts = parse_url("http://" . $this->config->getProxy());
-            }
-            if ($urlParts == false || !array_key_exists("host", $urlParts)) {
-                throw new SpeedtestException("Invalid pattern for proxy " . $this->config->getProxy() . ". Proxy should match following pattern: http://ip:port, http://username:password@ip:port, socks5://ip:port, socks5://username:password@ip:port or or socks5h://username:password@ip:port");
-            }
-            curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"]);
-            if (isset($urlParts["port"])) {
-                curl_setopt($ch, CURLOPT_PROXY, $urlParts["host"] . ":" . $urlParts["port"]);
-            }
-            if (isset($urlParts["user"])) {
-                curl_setopt($ch, CURLOPT_PROXYUSERPWD, $urlParts["user"] . ":" . $urlParts["pass"]);
-            }
+        if ($this->config->getProxy()) {
+            curl_setopt($ch, CURLOPT_PROXY, $this->config->getProxyType() . '://' . $this->config->getProxy());
+            curl_setopt($ch, CURLOPT_NOPROXY, '');
         }
         curl_setopt($ch, CURLOPT_URL, 'https://www.speedtest.net/api/api.php');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);

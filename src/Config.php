@@ -306,15 +306,10 @@ class Config
      */
     public function setProxy($proxy)
     {
-        $proxy = str_replace("https://", "", $proxy);
-        $proxy = str_replace("http://", "", $proxy);
-        if (strpos($proxy, "socks5://") !==  false) {
-            $proxy = str_replace("socks5://", "", $proxy);
-            $this->proxyType = "socks5";
-        }
-        if (strpos($proxy, "socks5h://") !==  false) {
-            $proxy = str_replace("socks5h://", "", $proxy);
-            $this->proxyType = "socks5h";
+        $this->proxyType = 'http';
+        if (preg_match('~^(https?|socks5h?)://~i', $proxy, $match)) {
+            $this->proxyType = strtolower($match[1]);
+            $proxy = substr($proxy, strlen($match[0]));
         }
         $this->proxy = $proxy;
     }
